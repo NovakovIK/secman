@@ -1,46 +1,46 @@
-//
-// Created by ivan-novakov on 10/13/17.
-//
-
 #ifndef SECMAN_PRIORITYQUEUE_HPP
 #define SECMAN_PRIORITYQUEUE_HPP
 
-#include <utility>
-#include "BinaryHeap.hpp"
 
-template <typename P, typename V>
+#include <queue>
+
+
+template <typename Key, typename Value>
 class PriorityQueue
 {
 public:
-    using PriorityType = P;
-    using ValueType = V;
-    using PairType = std::pair<P, V>;
+    using Pair = std::pair<Key, Value>;
 
-    PriorityQueue() : heap([](const PairType &a, const PairType &b) -> bool {return a.first < b.first;}) {}
-
-    void insert(PriorityType priority, ValueType value)
+    void insert(const Key &key, const Value &value)
     {
-        heap.insert(std::make_pair(priority, value));
+        queue.emplace(key, value);
     }
 
-    ValueType pop()
+    const Pair & top() const
     {
-        return heap.pop().second;
+        return queue.top();
     }
 
-    std::size_t size()
+    Pair pop()
     {
-        return heap.size();
-    }
-
-    bool empty()
-    {
-        return heap.empty();
+        auto t = top();
+        queue.pop();
+        return t;
     }
 
 private:
-    BinaryHeap<std::pair<P, V>> heap;
+    template <typename Pair>
+    class FirstLess
+    {
+    public:
+        bool operator() (const Pair &left, const Pair &right)
+        {
+            return left.first < right.first;
+        }
+    };
+
+    std::priority_queue<Pair, std::vector<Pair>, FirstLess<Pair>> queue;
 };
 
 
-#endif //SECMAN_PRIORITYQUEUE_HPP
+#endif
