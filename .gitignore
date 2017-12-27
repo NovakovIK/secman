@@ -1,3 +1,6 @@
 /.idea
 /cmake-build*
 /docs
+/Doxyfile
+/html
+/latex

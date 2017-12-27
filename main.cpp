@@ -1,6 +1,14 @@
-#include <iostream>
+#include "args.hpp"
+#include "cli.hpp"
 
-#include "scheduler.hpp"
+int main(int argc, char const *argv[])
+{
+    args::parse<cli>(argc, argv);
+}
+/*
+ * #include <iostream>
+
+#include "Scheduler.hpp"
 
 void message(const std::string &s)
 {
@@ -45,3 +53,4 @@ int main()
     // destructor of secman::Scheduler will cancel all schedules but finish any tasks currently running
     std::this_thread::sleep_for(std::chrono::minutes(10));
 }
+ */
