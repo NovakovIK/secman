@@ -12,7 +12,7 @@ void secman::add(std::tm &tm, std::chrono::system_clock::duration time)
 void secman::verify_and_set(const std::string &token, const std::string &expression, int &field, const int lower_bound,
                             const int upper_bound, const bool adjust)
 {
-    if (token == "*")
+    if (token == "*" | token == "* ")
         field = -1;
     else
     {

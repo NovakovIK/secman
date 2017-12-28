@@ -23,12 +23,6 @@ std::chrono::system_clock::time_point secman::CronTask::get_new_time() const
     return cron.cron_to_next();
 }
 
-bool secman::try_parse(std::tm &tm, const std::string &expression, const std::string &format)
-{
-    std::stringstream ss(expression);
-    return !(ss >> std::get_time(&tm, format.c_str())).fail();
-}
-
 secman::Scheduler::Scheduler(unsigned int max_n_tasks) : done(false), threads(max_n_tasks + 1)
 {
     threads.push([this](int)
@@ -54,79 +48,6 @@ secman::Scheduler::~Scheduler()
 {
     done = true;
     sleeper.interrupt();
-}
-
-template<typename _Callable, typename... _Args>
-void secman::Scheduler::in(const std::chrono::system_clock::time_point time, _Callable &&f, _Args &&... args)
-{
-    std::shared_ptr<Task> t = std::make_shared<InTask>(
-            std::bind(std::forward<_Callable>(f), std::forward<_Args>(args)...));
-    add_task(time, std::move(t));
-}
-
-template<typename _Callable, typename... _Args>
-void secman::Scheduler::in(const std::chrono::system_clock::duration time, _Callable &&f, _Args &&... args)
-{
-    in(std::chrono::system_clock::now() + time, std::forward<_Callable>(f), std::forward<_Args>(args)...);
-}
-
-template<typename _Callable, typename... _Args>
-void secman::Scheduler::at(const std::string &time, _Callable &&f, _Args &&... args)
-{
-    // get current time as a tm object
-    auto time_now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    std::tm tm = *std::localtime(&time_now);
-
-    // our final time as a time_point
-    std::chrono::system_clock::time_point tp;
-
-    if (try_parse(tm, time, "%H:%M:%S"))
-    {
-        // convert tm back to time_t, then to a time_point and assign to final
-        tp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-
-        // if we've already passed this time, the user will mean next day, so add a day.
-        if (std::chrono::system_clock::now() >= tp)
-            tp += std::chrono::hours(24);
-    } else if (try_parse(tm, time, "%Y-%m-%d %H:%M:%S"))
-    {
-        tp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-    } else if (try_parse(tm, time, "%Y/%m/%d %H:%M:%S"))
-    {
-        tp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-    } else
-    {
-        // could not parse time
-        throw std::runtime_error("Cannot parse time string: " + time);
-    }
-
-    in(tp, std::forward<_Callable>(f), std::forward<_Args>(args)...);
-}
-
-template<typename _Callable, typename... _Args>
-void secman::Scheduler::every(const std::chrono::system_clock::duration time, _Callable &&f, _Args &&... args)
-{
-    std::shared_ptr<Task> t = std::make_shared<EveryTask>(time, std::bind(std::forward<_Callable>(f),
-                                                                          std::forward<_Args>(args)...));
-    auto next_time = t->get_new_time();
-    add_task(next_time, std::move(t));
-}
-
-template<typename _Callable, typename... _Args>
-void secman::Scheduler::cron(const std::string &expression, _Callable &&f, _Args &&... args)
-{
-    std::shared_ptr<Task> t = std::make_shared<CronTask>(expression, std::bind(std::forward<_Callable>(f),
-                                                                               std::forward<_Args>(args)...));
-    auto next_time = t->get_new_time();
-    add_task(next_time, std::move(t));
-}
-
-template<typename _Callable, typename... _Args>
-void secman::Scheduler::interval(const std::chrono::system_clock::duration time, _Callable &&f, _Args &&... args)
-{
-    std::shared_ptr<Task> t = std::make_shared<EveryTask>(time, std::bind(std::forward<_Callable>(f),
-                                                                          std::forward<_Args>(args)...), true);
-    add_task(std::chrono::system_clock::now(), std::move(t));
 }
 
 void secman::Scheduler::add_task(const std::chrono::system_clock::time_point time, std::shared_ptr<secman::Task> t)

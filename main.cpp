@@ -1,56 +1,138 @@
-#include "args.hpp"
-#include "cli.hpp"
+#include <chrono>
+#include "argparse.hpp"
+#include "scheduler.hpp"
+#include <memory>
+#include <cstring>
 
-int main(int argc, char const *argv[])
+using namespace std;
+
+void exec(const string &expression)
 {
-    args::parse<cli>(argc, argv);
-}
-/*
- * #include <iostream>
-
-#include "Scheduler.hpp"
-
-void message(const std::string &s)
-{
-    std::cout << s << std::endl;
+    system(expression.c_str());
 }
 
-int main()
+int main(int argc, const char** argv)
 {
-    // number of tasks that can run simultaneously
-    // Note: not the number of tasks that can be added,
-    //       but number of tasks that can be run in parallel
-    unsigned int max_n_threads = 12;
+    secman::Scheduler s(12);
 
-    // Make a new scheduling object.
-    // Note: s cannot be moved or copied
-    secman::Scheduler s(max_n_threads);
+    // make a new ArgumentParser
+    ArgumentParser parser;
+    parser.appName("secman");
 
-    // every second call message("every second")
-    s.every(std::chrono::seconds(1), message, "every second");
+    // add some arguments to search for
+    parser.addArgument("-a", "--at", '+', true);
+    //parser.addArgument("-e", "--every", '+', true);
+    //parser.addArgument("-i", "--interval", 1, true);
+    parser.addArgument("-c", "--cron", '+', true);
+    parser.addArgument("-e", "--execute", '+', true);
+    parser.addArgument("-l", "--list", true);
+    parser.addArgument("-d", "--delete", 1, true);
 
-    // in one minute
-    s.in(std::chrono::minutes(1), []() { std::cout << "in one minute" << std::endl; });
 
-    // run lambda, then wait a second, run lambda, and so on
-    // different from every in that multiple instances of the function will never be run concurrently
-    s.interval(std::chrono::seconds(1), []() {
-        std::cout << "right away, then once every 6s" << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-    });
+    // parse the command-line arguments - throws if invalid format
+    parser.parse(argc, argv);
 
-    // https://en.wikipedia.org/wiki/Cron
-    s.cron("* * * * *", []() { std::cout << "top of every minute" << std::endl; });
 
-    // Time formats supported:
-    // %Y/%m/%d %H:%M:%S, %Y-%m-%d %H:%M:%S, %H:%M:%S
-    // With only a time given, it will run tomorrow if that time has already passed.
-    // But with a date given, it will run immediately if that time has already passed.
-    s.at("2017-04-19 12:31:15", []() { std::cout << "at a specific time." << std::endl; });
 
-    s.cron("5 0 * * *", []() { std::cout << "every day 5 minutes after midnight" << std::endl; });
+    if (parser.count("at"))
+    {
+        if(parser.count("execute"))
+        {
+            vector<string> command = parser.retrieve<vector<string>>("execute");
 
-    // destructor of secman::Scheduler will cancel all schedules but finish any tasks currently running
+            string command_parse;
+
+            for (auto &i : command)
+            {
+                command_parse += i + ' ';
+            }
+            command_parse.push_back('\0');
+
+            vector<string> at = parser.retrieve<vector<string>>("at");
+
+            string at_time;
+
+            for (auto &i : at)
+            {
+                at_time += i + ' ';
+            }
+            at_time.erase(at_time.end() - 1);
+            at_time.push_back('\0');
+            auto command_c = new char[command_parse.size()];
+            std::copy(command_parse.begin(), command_parse.end(), command_c);
+
+            auto at_time_c = new char[at_time.size()];
+            std::copy(at_time.begin(), at_time.end(), at_time_c);
+
+            cout << at_time_c << endl << command_c << endl;
+            s.at(at_time_c, system, command_c);
+        }
+    }
+
+    if (parser.count("cron"))
+    {
+        if(parser.count("execute"))
+        {
+            vector<string> command = parser.retrieve<vector<string>>("execute");
+
+            string command_parse;
+
+            for (auto &i : command)
+            {
+                command_parse += i + ' ';
+            }
+            vector<string> cron = parser.retrieve<vector<string>>("cron");
+
+            string cron_time;
+
+            cron_time = cron[0] + ' ' + cron[1] + ' ' + cron[2] + ' ' + cron[3] + ' ' + cron[4] + '\0';
+
+            auto command_c = new char[command_parse.size()];
+            std::copy(command_parse.begin(), command_parse.end(), command_c);
+
+            auto cron_time_c = new char[cron_time.size()];
+            std::copy(cron_time.begin(), cron_time.end(), cron_time_c);
+
+            cout << cron_time_c << endl << command_c << endl;
+            s.cron(cron_time_c, system, command_c);
+        }
+    }
+
+//    if (parser.count("every"))
+//    {
+//        vector<string> every = parser.retrieve<vector<string>>("every");
+//
+//        string str;
+//        for (int i = 1; i < every.size(); ++i)
+//        {
+//            str += every[i] + ' ';
+//        }
+//
+//        auto command = new char[str.size()];
+//        std::copy(str.begin(), str.end(), command);
+//
+//        s.every(std::chrono::seconds(15), system, command);
+//    }
+//
+//    if (parser.count("interval"))
+//    {
+//        vector<string> interval = parser.retrieve<vector<string>>("interval");
+//
+//        string str;
+//        for (int i = 1; i < interval.size(); ++i)
+//        {
+//            str += interval[i] + ' ';
+//        }
+//
+//        auto command = new char[str.size()];
+//        std::copy(str.begin(), str.end(), command);
+//
+//        s.interval(std::chrono::seconds(15), system, command);
+//    }
+
+
+
+
     std::this_thread::sleep_for(std::chrono::minutes(10));
+    return 0;
 }
- */
